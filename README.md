@@ -26,6 +26,7 @@ src/vwap_trading/
 ├── broker/      # 키움증권 REST API 클라이언트
 ├── data/        # 분봉 수집·정제·세션·종목 선정 (02장)
 ├── indicators/  # VWAP·기울기·상태·박스 중심선 (03장)
+├── optimize/    # Optuna 탐색·Walk-forward·최종 테스트 봉인 (06장)
 ├── reporting/   # 차트 공통 설정
 └── strategy/    # 기본 전략 S0·A: 신호·청산·진입 허용 (04장)
 configs/         # 전략 설정 파일 (TOML)
@@ -34,7 +35,8 @@ examples/
 ├── chapter02/
 ├── chapter03/
 ├── chapter04/
-└── chapter05/
+├── chapter05/
+└── chapter06/
 ```
 
 ## 장별 예제
@@ -91,3 +93,19 @@ uv run python examples/chapter04/05_run_strategy.py
 | 05 | `examples/chapter05/05_leakage.py` | 미래 정보·데이터 누수 검사 (약 2분) |
 
 > 수수료율 0.015% 는 가정값입니다. `src/vwap_trading/backtest/costs.py` 의 `CostModel(fee=...)` 를 본인 계좌 수수료율로 바꾸세요.
+
+| 장 | 예제 | 내용 |
+|---|---|---|
+| 06 | `examples/chapter06/01_first_study.py` | 첫 Optuna Study, SQLite 기록 저장·재현 |
+| 06 | `examples/chapter06/02_search_space.py` | 파라미터를 하나씩 바꿔 본 탐색 공간 점검 |
+| 06 | `examples/chapter06/03_objectives.py` | 목적함수(합계·평균·평균−표준오차) 비교 (약 5분) |
+| 06 | `examples/chapter06/04_walk_forward.py` | Walk-forward 최적화 6개 창 (약 10분) |
+| 06 | `examples/chapter06/05_diagnose.py` | B 대 A 비교와 과최적화 진단 (04 실행 후) |
+
+```bash
+uv sync --extra ml
+uv run python examples/chapter06/04_walk_forward.py
+uv run python examples/chapter06/05_diagnose.py
+```
+
+> 2026-09-01 이후는 최종 테스트 구간입니다. `optimize()` 에 이 구간이 들어가면 `FinalTestLeak` 오류가 납니다.

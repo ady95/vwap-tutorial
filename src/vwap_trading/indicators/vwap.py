@@ -14,6 +14,9 @@ import pandas as pd
 from vwap_trading.data.session import regular_session
 
 FLAT, UP, DOWN = 0, 1, -1
+# 기준선·기울기를 이 자릿수로 반올림한다. 정수 가격에서는 기울기가 임계값과 정확히 같아지는 봉이
+# 생기는데, 계산 순서에 따른 1e-11 수준의 오차가 상태 판정을 뒤집지 않게 하기 위해서다.
+PRICE_DP, SLOPE_DP = 6, 9
 
 
 @dataclass(frozen=True)
@@ -99,12 +102,12 @@ def day_indicators(day: pd.DataFrame, p: VwapParams) -> pd.DataFrame:
     out = day.copy()
     out["bar_no"] = np.arange(1, len(day) + 1)
     out["tp"] = typical_price(day)
-    out["svwap"] = session_vwap(day)
-    out["rvwap"] = rolling_vwap(day, p.N)
+    out["svwap"] = session_vwap(day).round(PRICE_DP)
+    out["rvwap"] = rolling_vwap(day, p.N).round(PRICE_DP)
     out["atr"] = atr(day, p.n_atr)
     out["atr_s"] = np.maximum(out.atr, p.eps_atr * day.close)          # ATR* (분모 하한)
     out["atr_low"] = out.atr < p.eps_atr * day.close                     # 신규 진입 금지 표시
-    out["slope"] = (out.rvwap - out.rvwap.shift(p.k)) / (p.k * out.atr_s)
+    out["slope"] = ((out.rvwap - out.rvwap.shift(p.k)) / (p.k * out.atr_s)).round(SLOPE_DP)
     out["state"] = classify_state(out.slope.to_numpy(), p.theta, p.m)
     out["box"] = box_center(out.tp.to_numpy(), day.volume.to_numpy(dtype=float), out.state.to_numpy(), p.m)
     out["mvwap"] = np.where(out.state == FLAT, out.box, np.where(out.state.isna(), np.nan, out.rvwap))
@@ -112,8 +115,8 @@ def day_indicators(day: pd.DataFrame, p: VwapParams) -> pd.DataFrame:
     return out
 
 
-def compute_indicators(bars: pd.DataFrame, p: VwapParams = VwapParams()) -> pd.DataFrame:
-    """정규장 봉만 골라 날짜별로 지표를 계산한다."""
+def compute_indicators_reference(bars: pd.DataFrame, p: VwapParams = VwapParams()) -> pd.DataFrame:
+    """정규장 봉만 골라 날짜별로 day_indicators 를 돌린다 (03장 설명용 기준 구현, 느림)."""
     bars = regular_session(bars)
     days = [day_indicators(g, p) for _, g in bars.groupby(bars.index.date)]
     out = pd.concat(days)
@@ -121,6 +124,69 @@ def compute_indicators(bars: pd.DataFrame, p: VwapParams = VwapParams()) -> pd.D
     return out
 
 
+def _day_cumsum(v: np.ndarray, first: np.ndarray) -> np.ndarray:
+    """날짜마다 0 에서 다시 시작하는 누적합. first: 그날 첫 봉 위치."""
+    c = np.cumsum(v)
+    start = np.repeat(np.r_[0.0, c][first], np.diff(np.r_[first, len(v)]))
+    return c - start
+
+
+def _day_rolling_sum(v: np.ndarray, n: int, bar_no: np.ndarray, first: np.ndarray) -> np.ndarray:
+    """날짜 안에서만 n 봉 이동합. 그날 봉이 n 개 미만이면 NaN (부분 윈도우 금지)."""
+    c = _day_cumsum(v, first)
+    prev = np.r_[np.full(n, np.nan), c[:-n]] if len(c) > n else np.full(len(c), np.nan)
+    out = np.where(bar_no > n, c - prev, c)
+    return np.where(bar_no >= n, out, np.nan)
+
+
+def compute_indicators(bars: pd.DataFrame, p: VwapParams = VwapParams()) -> pd.DataFrame:
+    """정규장 봉만 골라 지표를 계산한다. 하루 단위 계산을 배열 연산으로 한 번에 한다.
+
+    결과는 compute_indicators_reference 와 같다(부동소수 오차 범위). 06장 Optuna 처럼
+    수백 번 반복할 때를 위해 날짜별 반복을 없앴다.
+    """
+    bars = regular_session(bars)
+    out = bars.copy()
+    if bars.empty:
+        return compute_indicators_reference(bars, p)
+    day = bars.index.normalize().to_numpy()
+    first = np.flatnonzero(np.r_[True, day[1:] != day[:-1]])
+    bar_no = np.arange(len(bars)) - np.repeat(first, np.diff(np.r_[first, len(bars)])) + 1
+    h, lo, c = (bars[k].to_numpy(dtype=float) for k in ("high", "low", "close"))
+    vol = bars.volume.to_numpy(dtype=float)
+    tp = (h + lo + c) / 3
+    pv = tp * vol
+
+    out["bar_no"] = bar_no
+    out["tp"] = tp
+    out["svwap"] = np.round(_day_cumsum(pv, first) / _day_cumsum(vol, first), PRICE_DP)
+    rvwap = np.round(_day_rolling_sum(pv, p.N, bar_no, first) / _day_rolling_sum(vol, p.N, bar_no, first), PRICE_DP)
+    out["rvwap"] = rvwap
+    prev_c = np.r_[np.nan, c[:-1]]
+    tr = np.maximum.reduce([h - lo, np.abs(h - prev_c), np.abs(lo - prev_c)])
+    tr[first] = h[first] - lo[first]                       # 당일 첫 봉: 전일 종가를 쓰지 않는다
+    atr_ = _day_rolling_sum(tr, p.n_atr, bar_no, first) / p.n_atr
+    out["atr"] = atr_
+    atr_s = np.maximum(atr_, p.eps_atr * c)
+    atr_s[np.isnan(atr_)] = np.nan
+    out["atr_s"] = atr_s
+    out["atr_low"] = atr_ < p.eps_atr * c
+    prev_r = np.r_[np.full(p.k, np.nan), rvwap[:-p.k]]
+    slope = np.round(np.where(bar_no > p.k, (rvwap - prev_r) / (p.k * atr_s), np.nan), SLOPE_DP)
+    out["slope"] = slope
+    state = classify_state(slope, p.theta, p.m)
+    out["state"] = state
+    box = box_center(tp, vol, state, p.m)
+    out["box"] = box
+    out["mvwap"] = np.where(state == FLAT, box, np.where(np.isnan(state), np.nan, rvwap))
+    vol_prev = np.r_[np.nan, vol[:-1]]
+    vol_prev[first] = np.nan
+    base = _day_rolling_sum(np.nan_to_num(vol_prev), p.n_vol, bar_no - 1, first) / p.n_vol
+    out["rvol"] = vol / np.where(base == 0, np.nan, base)
+    out.attrs["params"] = asdict(p)
+    return out
+
+
 def load_indicators(symbols, p: VwapParams = VwapParams(), raw_dir="data/raw") -> dict[str, pd.DataFrame]:
-    """02장에서 저장한 1분봉 Parquet 을 읽어 종목별 지표를 계산한다 (종목당 약 2초)."""
+    """02장에서 저장한 1분봉 Parquet 을 읽어 종목별 지표를 계산한다 (종목당 약 0.2초)."""
     return {s: compute_indicators(pd.read_parquet(f"{raw_dir}/{s}_1m.parquet"), p) for s in dict.fromkeys(symbols)}

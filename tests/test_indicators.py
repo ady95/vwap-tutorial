@@ -5,7 +5,8 @@ import pandas as pd
 import pytest
 
 from vwap_trading.indicators.vwap import (FLAT, UP, VwapParams, atr, box_center, classify_state,
-                                          compute_indicators, relative_volume, rolling_vwap, session_vwap)
+                                          compute_indicators, compute_indicators_reference, relative_volume,
+                                          rolling_vwap, session_vwap)
 
 
 def day(rows, start="2026-10-29 09:00"):
@@ -69,3 +70,21 @@ def test_indicators_reset_each_day_and_do_not_use_future():
     cut = compute_indicators(bars.loc[:"2026-10-29 09:40"], p)
     cols = ["svwap", "rvwap", "atr", "slope", "state", "mvwap"]
     pd.testing.assert_frame_equal(full.loc[cut.index, cols], cut[cols])
+
+
+@pytest.mark.parametrize("params", [VwapParams(), VwapParams(N=10, k=3, theta=0.15, m=5), VwapParams(N=90, k=15, m=30)])
+def test_vectorized_matches_reference(params):
+    """06장에서 빠르게 바꾼 compute_indicators 가 03장 기준 구현과 같은 값을 내는가."""
+    rng = np.random.default_rng(7)
+    days = []
+    for d in pd.bdate_range("2026-03-02", periods=3):
+        n = 390
+        close = 10000 + np.cumsum(rng.integers(-2, 3, n)) * 10       # 정수 호가 → 기울기 동률이 생긴다
+        idx = pd.date_range(d + pd.Timedelta(hours=9), periods=n, freq="1min", name="time")
+        days.append(pd.DataFrame({"open": close, "high": close + 10, "low": close - 10, "close": close,
+                                  "volume": rng.integers(0, 50, n)}, index=idx))
+    bars = pd.concat(days)
+    fast, ref = compute_indicators(bars, params), compute_indicators_reference(bars, params)
+    cols = ["bar_no", "svwap", "rvwap", "atr", "atr_s", "slope", "state", "box", "mvwap", "rvol"]
+    pd.testing.assert_frame_equal(fast[cols], ref[cols], check_dtype=False, atol=1e-6)
+    assert (fast.atr_low == ref.atr_low).all()
