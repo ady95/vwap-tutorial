@@ -23,9 +23,11 @@ cp .env.example .env         # 키움증권 REST API 앱키·계좌 입력
 ```text
 src/vwap_trading/
 ├── broker/      # 키움증권 REST API 클라이언트
-├── data/        # 분봉 수집·정제
+├── data/        # 분봉 수집·정제·세션·종목 선정 (02장)
+└── indicators/  # VWAP·기울기·상태·박스 중심선 (03장)
 examples/
-└── chapter02/   # 장별 실습 예제
+├── chapter02/   # 장별 실습 예제
+└── chapter03/
 ```
 
 ## 장별 예제
