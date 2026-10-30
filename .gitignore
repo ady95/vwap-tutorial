@@ -22,3 +22,6 @@ __pycache__/
 .venv/
 .pytest_cache/
 .ipynb_checkpoints/
+
+# 11장 수동 중단 파일
+STOP

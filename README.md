@@ -13,6 +13,7 @@
 # uv 설치 후
 uv sync                      # 기본 의존성
 uv sync --extra ml           # 06~09장 (Optuna·LightGBM)
+uv sync --extra live --extra ml   # 10~11장 (웹소켓 실시간 모의매매)
 cp .env.example .env         # 키움증권 REST API 앱키·계좌 입력
 ```
 
@@ -23,9 +24,10 @@ cp .env.example .env         # 키움증권 REST API 앱키·계좌 입력
 ```text
 src/vwap_trading/
 ├── backtest/    # 이벤트 기반 백테스트·비용 모델·성과 지표 (05장)
-├── broker/      # 키움증권 REST API 클라이언트
+├── broker/      # 키움증권 REST API 클라이언트, 모의투자 주문·계좌 (10장)
 ├── data/        # 분봉 수집·정제·세션·종목 선정 (02장)
 ├── indicators/  # VWAP·기울기·상태·박스 중심선 (03장)
+├── live/        # 실시간 봉·실행기·주문 상태·위험관리·거래 로그·재생 모드 (10~11장)
 ├── ml/          # LightGBM 학습 데이터(07장)·필터 모델·확률 보정·승인 규칙(08장)
 ├── optimize/    # Optuna 탐색·Walk-forward·최종 테스트 봉인 (06장)
 ├── reporting/   # 차트 공통 설정
@@ -40,7 +42,9 @@ examples/
 ├── chapter06/
 ├── chapter07/
 ├── chapter08/
-└── chapter09/
+├── chapter09/
+├── chapter10/
+└── chapter11/
 ```
 
 ## 장별 예제
@@ -135,3 +139,20 @@ uv run python examples/chapter06/05_diagnose.py
 | 09 | `examples/chapter09/01_run_experiments.py` | S0·A·A′·A_B·B·C·D 월별 Walk-forward 실행, 최종 테스트 포함 (약 15분) |
 | 09 | `examples/chapter09/02_compare.py` | 전략별 성과표와 사전 등록 기준에 따른 판단 |
 | 09 | `examples/chapter09/03_regimes.py` | 시장 국면·종목 특성별 성과 (S0·A 전 기간) |
+
+10~11장의 주문 예제는 키움 **모의투자 서버**에서만 동작합니다. .env에 `TRADING_MODE=paper`를 넣어야 주문이 나가고, 실전 앱키로는 코드에서 주문을 막습니다.
+
+| 장 | 예제 | 내용 |
+|---|---|---|
+| 10 | `examples/chapter10/01_ws_bars.py` | 웹소켓 체결 → 1분봉, 키움 분봉과 대조 (장중, 주문 없음) |
+| 10 | `examples/chapter10/02_replay_parity.py` | 과거 분봉 재생으로 실시간 실행기와 백테스트의 판정 일치 확인 |
+| 10 | `examples/chapter10/03_live_filter.py` | 실시간 피처 일치 확인, 모의매매용 LightGBM 필터 저장 |
+| 10 | `examples/chapter10/04_orders.py` | 모의투자 지정가 매수·정정·취소, 시장가 매수·매도와 주문체결 이벤트 |
+| 10 | `examples/chapter10/05_sync.py` | 계좌(보유·미체결·체결)와 거래 로그 대조 (조회 전용) |
+
+| 장 | 예제 | 내용 |
+|---|---|---|
+| 11 | `examples/chapter11/01_preflight.py` | 장 시작 전 점검 10항목 |
+| 11 | `examples/chapter11/02_run_paper.py` | 실시간 모의매매 실행 (중단: STOP 파일) |
+| 11 | `examples/chapter11/03_report.py` | 하루 리포트: 체결 오차, 봉 대조, 같은 날 백테스트 비교 |
+| 11 | `examples/chapter11/04_drills.py` | 재생 모드 위험관리·장애 훈련 (주문 없음) |
