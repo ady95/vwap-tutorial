@@ -22,6 +22,7 @@ cp .env.example .env         # 키움증권 REST API 앱키·계좌 입력
 
 ```text
 src/vwap_trading/
+├── backtest/    # 이벤트 기반 백테스트·비용 모델·성과 지표 (05장)
 ├── broker/      # 키움증권 REST API 클라이언트
 ├── data/        # 분봉 수집·정제·세션·종목 선정 (02장)
 ├── indicators/  # VWAP·기울기·상태·박스 중심선 (03장)
@@ -32,7 +33,8 @@ examples/
 ├── chapter01/   # 장별 실습 예제
 ├── chapter02/
 ├── chapter03/
-└── chapter04/
+├── chapter04/
+└── chapter05/
 ```
 
 ## 장별 예제
@@ -79,3 +81,13 @@ uv run python examples/chapter03/04_plot_day.py 005930 2026-10-29
 uv run python examples/chapter04/01_signals.py
 uv run python examples/chapter04/05_run_strategy.py
 ```
+
+| 장 | 예제 | 내용 |
+|---|---|---|
+| 05 | `examples/chapter05/01_event_engine.py` | 이벤트 엔진과 04장 결과 일치 확인, 이벤트 로그, 동시 보유 한도 |
+| 05 | `examples/chapter05/02_costs.py` | 호가단위·수정주가 점검, 비용 분해, 장중 거래 공백 |
+| 05 | `examples/chapter05/03_metrics.py` | 순수익 기준 성과 지표와 누적 손익 곡선 |
+| 05 | `examples/chapter05/04_compare.py` | S0 대 A: 신뢰구간, 월별·종목별, 비용 민감도, 손익분기 승률 |
+| 05 | `examples/chapter05/05_leakage.py` | 미래 정보·데이터 누수 검사 (약 2분) |
+
+> 수수료율 0.015% 는 가정값입니다. `src/vwap_trading/backtest/costs.py` 의 `CostModel(fee=...)` 를 본인 계좌 수수료율로 바꾸세요.
