@@ -1,0 +1,24 @@
+# 비밀 정보 — 절대 커밋 금지
+.env
+.env.*
+!.env.example
+
+# 토큰 캐시
+.cache/
+
+# 수집 데이터 (data/sample 만 커밋)
+data/*
+!data/sample/
+!data/README.md
+
+# 학습 결과물·리포트
+models_out/
+reports/*
+!reports/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ipynb_checkpoints/

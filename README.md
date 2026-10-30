@@ -1,0 +1,41 @@
+# vwap-tutorial
+
+위키독스 「AI로 개선하는 변형 VWAP 단타 자동매매 따라하기」의 예제 코드 저장소입니다.
+
+- 위키독스: https://wikidocs.net/book/21914
+- 부제: Python·Optuna·LightGBM을 활용한 매수 신호 최적화와 실전형 자동매매 시스템 구축
+
+> 이 저장소는 교육용 예제입니다. 특정 투자 성과를 보장하지 않으며, 실제 계좌 주문은 코드에서 차단합니다.
+
+## 준비
+
+```bash
+# uv 설치 후
+uv sync                      # 기본 의존성
+uv sync --extra ml           # 06~09장 (Optuna·LightGBM)
+cp .env.example .env         # 키움증권 REST API 앱키·계좌 입력
+```
+
+키움증권 REST API를 쓰려면 키움 Open API 사이트에서 앱키를 발급받고, 실행할 PC의 공인 IP를 허용 IP로 등록해야 합니다.
+
+## 구성
+
+```text
+src/vwap_trading/
+├── broker/      # 키움증권 REST API 클라이언트
+├── data/        # 분봉 수집·정제
+examples/
+└── chapter02/   # 장별 실습 예제
+```
+
+## 장별 예제
+
+| 장 | 예제 | 내용 |
+|---|---|---|
+| 02 | `examples/chapter02/01_check_connection.py` | 키움 REST API 토큰·시세·분봉 조회 확인 |
+| 02 | `examples/chapter02/02_collect_minute_bars.py` | 연속조회로 과거 1분봉 수집 → Parquet 저장 |
+
+```bash
+uv run python examples/chapter02/01_check_connection.py
+uv run python examples/chapter02/02_collect_minute_bars.py 005930 --pages 50
+```

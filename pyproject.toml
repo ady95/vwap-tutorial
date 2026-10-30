@@ -1,0 +1,26 @@
+[project]
+name = "vwap-trading"
+version = "0.1.0"
+description = "위키독스 「AI로 개선하는 변형 VWAP 단타 자동매매 따라하기」 예제 코드"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "matplotlib>=3.9",
+    "numpy>=2.0",
+    "pandas>=2.2",
+    "pyarrow>=17.0",
+    "python-dotenv>=1.0",
+    "requests>=2.32",
+    "tzdata>=2025.1",
+]
+
+[project.optional-dependencies]
+ml = ["optuna>=4.0", "lightgbm>=4.5", "scikit-learn>=1.5", "joblib>=1.4"]   # 06~09장
+live = ["websockets>=13.0"]                                                    # 10~11장
+
+[dependency-groups]
+dev = ["pytest>=8.0"]
+
+[build-system]
+requires = ["uv_build>=0.11.11,<0.12.0"]
+build-backend = "uv_build"
