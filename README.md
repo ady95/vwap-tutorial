@@ -24,10 +24,15 @@ cp .env.example .env         # 키움증권 REST API 앱키·계좌 입력
 src/vwap_trading/
 ├── broker/      # 키움증권 REST API 클라이언트
 ├── data/        # 분봉 수집·정제·세션·종목 선정 (02장)
-└── indicators/  # VWAP·기울기·상태·박스 중심선 (03장)
+├── indicators/  # VWAP·기울기·상태·박스 중심선 (03장)
+├── reporting/   # 차트 공통 설정
+└── strategy/    # 기본 전략 S0·A: 신호·청산·진입 허용 (04장)
+configs/         # 전략 설정 파일 (TOML)
 examples/
-├── chapter02/   # 장별 실습 예제
-└── chapter03/
+├── chapter01/   # 장별 실습 예제
+├── chapter02/
+├── chapter03/
+└── chapter04/
 ```
 
 ## 장별 예제
@@ -60,4 +65,17 @@ uv run python examples/chapter03/01_session_vwap.py 005930 2026-10-29
 uv run python examples/chapter03/02_rolling_vs_session.py --universe data/sample/universe_20261030.csv
 uv run python examples/chapter03/03_state_and_box.py
 uv run python examples/chapter03/04_plot_day.py 005930 2026-10-29
+```
+
+| 장 | 예제 | 내용 |
+|---|---|---|
+| 04 | `examples/chapter04/01_signals.py` | S0·A 매수 후보를 조건별로 세기 |
+| 04 | `examples/chapter04/02_exits.py` | ATR 손절 폭, 청산 사유 분포, 매매 1건 그림 |
+| 04 | `examples/chapter04/03_repaint.py` | 미확정 봉 착시, 다음 봉 시가 체결, 리페인팅 검사 (약 3분) |
+| 04 | `examples/chapter04/04_filters.py` | 진입 허용·재진입 대기 조건별로 걸러지는 후보 |
+| 04 | `examples/chapter04/05_run_strategy.py` | 설정 파일로 S0·A 실행 → 매매 기록 저장, 재현 확인 |
+
+```bash
+uv run python examples/chapter04/01_signals.py
+uv run python examples/chapter04/05_run_strategy.py
 ```

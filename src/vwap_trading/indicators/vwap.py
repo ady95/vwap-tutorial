@@ -119,3 +119,8 @@ def compute_indicators(bars: pd.DataFrame, p: VwapParams = VwapParams()) -> pd.D
     out = pd.concat(days)
     out.attrs["params"] = asdict(p)
     return out
+
+
+def load_indicators(symbols, p: VwapParams = VwapParams(), raw_dir="data/raw") -> dict[str, pd.DataFrame]:
+    """02장에서 저장한 1분봉 Parquet 을 읽어 종목별 지표를 계산한다 (종목당 약 2초)."""
+    return {s: compute_indicators(pd.read_parquet(f"{raw_dir}/{s}_1m.parquet"), p) for s in dict.fromkeys(symbols)}
