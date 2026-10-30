@@ -43,11 +43,16 @@ def expected_net(p: np.ndarray, win: float, loss: float) -> np.ndarray:
     return p * win + (1 - p) * loss
 
 
-def walk_forward(df: pd.DataFrame, label: str, test_months: list[str], embargo_days: int = 1) -> pd.DataFrame:
-    """검증 달마다 학습·보정한 모델로 예측한다. 반환: 검증 표본 + p_raw, p_cal, exp_net, approve, q70."""
+def walk_forward(df: pd.DataFrame, label: str, test_months: list[str], embargo_days: int = 1,
+                 final: bool = False) -> pd.DataFrame:
+    """검증 달마다 학습·보정한 모델로 예측한다. 반환: 검증 표본 + p_raw, p_cal, exp_net, approve, top30.
+
+    final=True 는 09장 최종 평가용: 최종 테스트 달도 '그 달 이전 데이터로만 학습'해 예측한다.
+    """
     out = []
     for m in test_months:
-        tr, te = fold(df, m, embargo_days)
+        limit = pd.Period(m).start_time.date() if final else None
+        tr, te = fold(df, m, embargo_days, limit)
         train, test = df.iloc[tr], df.iloc[te]
         model, iso = fit_calibrated(train, label)
         p_raw = model.predict_proba(test[FEATURES])[:, 1]

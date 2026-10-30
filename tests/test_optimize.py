@@ -47,3 +47,11 @@ def test_suggest_stays_in_space_and_keeps_exit_rules():
             assert lo <= values[name] <= hi
         assert (p.lam, p.tau, p.h, p.eps, p.cooldown) == (1.5, 2.0, 30, 0.2, 10)    # 위험관리 규칙은 고정
         study.tell(trial, 0.0)
+
+
+def test_final_evaluation_still_blocks_same_month():
+    """09장 최종 평가는 limit 을 평가 달 첫날로 옮길 뿐, 그 달 데이터로 학습하는 것은 여전히 막는다."""
+    from datetime import date
+    check_before_final(["2026-09-30"], limit=date(2026, 10, 1))
+    with pytest.raises(FinalTestLeak):
+        check_before_final(["2026-10-01"], limit=date(2026, 10, 1))

@@ -28,6 +28,8 @@ class VwapParams:
     n_atr: int = 14         # ATR 기간
     n_vol: int = 20         # 상대 거래량 기간
     eps_atr: float = 0.0005  # ATR 하한 (가격 대비)
+    box: str = "fixed"      # "fixed": 고정 박스 중심선 (A) | "anchored": 연속 Anchored VWAP (A′, 09장)
+    kappa: float | None = None   # B안: FLAT 에 "최근 m봉 (최고가 − 최저가)/ATR* ≤ κ" 추가 (A_B, 09장)
 
     @property
     def warmup_end(self) -> int:
@@ -98,6 +100,57 @@ def box_center(tp: np.ndarray, vol: np.ndarray, state: np.ndarray, m: int) -> np
     return box
 
 
+def classify_state_b(s: np.ndarray, theta: float, m: int, range_ok: np.ndarray) -> np.ndarray:
+    """B안 상태 판정 (09장 A_B): 기울기 조건에 더해 최근 m봉 가격 폭이 좁아야 FLAT. 나머지는 A안과 같다."""
+    state = np.full(len(s), np.nan)
+    run, prev = 0, np.nan
+    for i, v in enumerate(s):
+        if np.isnan(v):
+            run, prev = 0, np.nan
+            continue
+        run = run + 1 if abs(v) < theta else 0
+        if run >= m and range_ok[i]:
+            cur = FLAT
+        elif v >= theta:
+            cur = UP
+        elif v <= -theta:
+            cur = DOWN
+        else:
+            cur = prev
+        state[i] = cur
+        prev = cur
+    return state
+
+
+def anchored_center(tp: np.ndarray, vol: np.ndarray, state: np.ndarray) -> np.ndarray:
+    """연속 Anchored VWAP (09장 A′): FLAT 확정 봉 t0 부터 현재까지 누적한다. 수평선이 아니다."""
+    out = np.full(len(state), np.nan)
+    pv = v = 0.0
+    for i, st in enumerate(state):
+        if st == FLAT:
+            if i == 0 or state[i - 1] != FLAT:
+                pv = v = 0.0
+            pv += tp[i] * vol[i]
+            v += vol[i]
+            out[i] = pv / v if v > 0 else np.nan
+        else:
+            pv = v = 0.0
+    return out
+
+
+def _state_and_box(tp, vol, hi, lo, atr_s, slope, bar_no, p: VwapParams):
+    """VwapParams 의 box·kappa 설정에 따라 상태와 기준선(FLAT 구간 값)을 고른다."""
+    if p.kappa is None:
+        state = classify_state(slope, p.theta, p.m)
+    else:
+        hi_m = pd.Series(hi).rolling(p.m).max().to_numpy()
+        lo_m = pd.Series(lo).rolling(p.m).min().to_numpy()
+        rng = np.where(bar_no >= p.m, (hi_m - lo_m) / atr_s, np.inf)       # 전날 봉이 섞이는 창은 쓰지 않음
+        state = classify_state_b(slope, p.theta, p.m, np.nan_to_num(rng, nan=np.inf) <= p.kappa)
+    box = anchored_center(tp, vol, state) if p.box == "anchored" else box_center(tp, vol, state, p.m)
+    return state, box
+
+
 def day_indicators(day: pd.DataFrame, p: VwapParams) -> pd.DataFrame:
     out = day.copy()
     out["bar_no"] = np.arange(1, len(day) + 1)
@@ -108,8 +161,9 @@ def day_indicators(day: pd.DataFrame, p: VwapParams) -> pd.DataFrame:
     out["atr_s"] = np.maximum(out.atr, p.eps_atr * day.close)          # ATR* (분모 하한)
     out["atr_low"] = out.atr < p.eps_atr * day.close                     # 신규 진입 금지 표시
     out["slope"] = ((out.rvwap - out.rvwap.shift(p.k)) / (p.k * out.atr_s)).round(SLOPE_DP)
-    out["state"] = classify_state(out.slope.to_numpy(), p.theta, p.m)
-    out["box"] = box_center(out.tp.to_numpy(), day.volume.to_numpy(dtype=float), out.state.to_numpy(), p.m)
+    out["state"], out["box"] = _state_and_box(out.tp.to_numpy(), day.volume.to_numpy(dtype=float),
+                                              day.high.to_numpy(dtype=float), day.low.to_numpy(dtype=float),
+                                              out.atr_s.to_numpy(), out.slope.to_numpy(), out.bar_no.to_numpy(), p)
     out["mvwap"] = np.where(out.state == FLAT, out.box, np.where(out.state.isna(), np.nan, out.rvwap))
     out["rvol"] = relative_volume(day, p.n_vol)
     return out
@@ -174,9 +228,8 @@ def compute_indicators(bars: pd.DataFrame, p: VwapParams = VwapParams()) -> pd.D
     prev_r = np.r_[np.full(p.k, np.nan), rvwap[:-p.k]]
     slope = np.round(np.where(bar_no > p.k, (rvwap - prev_r) / (p.k * atr_s), np.nan), SLOPE_DP)
     out["slope"] = slope
-    state = classify_state(slope, p.theta, p.m)
+    state, box = _state_and_box(tp, vol, h, lo, atr_s, slope, bar_no, p)
     out["state"] = state
-    box = box_center(tp, vol, state, p.m)
     out["box"] = box
     out["mvwap"] = np.where(state == FLAT, box, np.where(np.isnan(state), np.nan, rvwap))
     vol_prev = np.r_[np.nan, vol[:-1]]

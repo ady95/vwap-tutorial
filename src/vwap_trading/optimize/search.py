@@ -36,10 +36,16 @@ class FinalTestLeak(RuntimeError):
     """최종 테스트 구간의 데이터가 탐색에 들어가려 할 때."""
 
 
-def check_before_final(days) -> None:
+def check_before_final(days, limit: date | None = None) -> None:
+    """학습 데이터가 limit(기본: 최종 테스트 시작일) 이전인지 확인한다.
+
+    09장의 최종 평가만 limit 을 '평가하는 달의 첫날'로 넘긴다. 그래도 평가하는 달 이전 데이터만 쓴다는
+    Walk-forward 원칙은 그대로다.
+    """
+    limit = limit or FINAL_TEST_START
     last = max(pd.Timestamp(d).date() for d in days)
-    if last >= FINAL_TEST_START:
-        raise FinalTestLeak(f"탐색 데이터에 최종 테스트 구간({FINAL_TEST_START} 이후)이 들어 있다: {last}")
+    if last >= limit:
+        raise FinalTestLeak(f"학습 데이터에 {limit} 이후가 들어 있다: {last}")
 
 
 def suggest(trial: optuna.Trial, base: StrategyParams = StrategyParams()) -> StrategyParams:
@@ -95,9 +101,10 @@ def score(net: np.ndarray, kind: str = "lcb", min_trades: int = 30) -> float:
 
 
 def optimize(bars, selections, n_trials: int = 100, kind: str = "lcb", min_trades: int = 30,
-             seed: int = 42, storage: str | None = None, study_name: str | None = None) -> optuna.Study:
-    """학습 구간 선정 입력으로 Study 를 돌린다. 최종 테스트 구간이 섞이면 FinalTestLeak."""
-    check_before_final(selections.tradable_from)
+             seed: int = 42, storage: str | None = None, study_name: str | None = None,
+             limit: date | None = None) -> optuna.Study:
+    """학습 구간 선정 입력으로 Study 를 돌린다. limit(기본: 최종 테스트 시작일) 이후가 섞이면 FinalTestLeak."""
+    check_before_final(selections.tradable_from, limit)
 
     def objective(trial):
         p = suggest(trial)

@@ -72,7 +72,8 @@ def test_indicators_reset_each_day_and_do_not_use_future():
     pd.testing.assert_frame_equal(full.loc[cut.index, cols], cut[cols])
 
 
-@pytest.mark.parametrize("params", [VwapParams(), VwapParams(N=10, k=3, theta=0.15, m=5), VwapParams(N=90, k=15, m=30)])
+@pytest.mark.parametrize("params", [VwapParams(), VwapParams(N=10, k=3, theta=0.15, m=5), VwapParams(N=90, k=15, m=30),
+                                    VwapParams(box="anchored"), VwapParams(kappa=2.0), VwapParams(N=10, m=5, kappa=1.0)])
 def test_vectorized_matches_reference(params):
     """06장에서 빠르게 바꾼 compute_indicators 가 03장 기준 구현과 같은 값을 내는가."""
     rng = np.random.default_rng(7)
@@ -88,3 +89,25 @@ def test_vectorized_matches_reference(params):
     cols = ["bar_no", "svwap", "rvwap", "atr", "atr_s", "slope", "state", "box", "mvwap", "rvol"]
     pd.testing.assert_frame_equal(fast[cols], ref[cols], check_dtype=False, atol=1e-6)
     assert (fast.atr_low == ref.atr_low).all()
+
+
+
+def test_anchored_center_accumulates_from_flat_start():
+    from vwap_trading.indicators.vwap import anchored_center
+    st = np.array([np.nan, FLAT, FLAT, UP, FLAT])
+    out = anchored_center(np.array([1.0, 10, 20, 5, 7]), np.array([1.0, 1, 3, 1, 2]), st)
+    assert np.isnan(out[0]) and np.isnan(out[3])
+    assert out[1] == 10 and out[2] == pytest.approx((10 * 1 + 20 * 3) / 4) and out[4] == 7    # 새 FLAT 은 새로 누적
+
+
+def test_kappa_flat_is_subset_of_slope_flat():
+    """B안 FLAT 은 기울기 조건에 가격 폭 조건을 더한 것이므로 A안 FLAT 의 부분집합이다."""
+    rng = np.random.default_rng(3)
+    n = 390
+    close = 10000 + np.cumsum(rng.integers(-2, 3, n)) * 10
+    idx = pd.date_range("2026-03-02 09:00", periods=n, freq="1min", name="time")
+    bars = pd.DataFrame({"open": close, "high": close + 10, "low": close - 10, "close": close,
+                         "volume": rng.integers(1, 50, n)}, index=idx)
+    a = compute_indicators(bars, VwapParams()).state == FLAT
+    b = compute_indicators(bars, VwapParams(kappa=2.0)).state == FLAT
+    assert (b & ~a).sum() == 0 and 0 < b.sum() < a.sum()

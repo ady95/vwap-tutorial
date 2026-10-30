@@ -15,8 +15,8 @@ import pandas as pd
 from vwap_trading.optimize.search import FINAL_TEST_START, check_before_final
 
 
-def fold(df: pd.DataFrame, test_month: str, embargo_days: int = 1) -> tuple[np.ndarray, np.ndarray]:
-    """검증 달 하나 → (학습 행 위치, 검증 행 위치)."""
+def fold(df: pd.DataFrame, test_month: str, embargo_days: int = 1, limit=None) -> tuple[np.ndarray, np.ndarray]:
+    """검증 달 하나 → (학습 행 위치, 검증 행 위치). limit 은 check_before_final 에 넘긴다 (09장 최종 평가용)."""
     month = df.date.dt.to_period("M").astype(str)
     test = np.flatnonzero(month == test_month)
     start = pd.Period(test_month).start_time
@@ -26,7 +26,7 @@ def fold(df: pd.DataFrame, test_month: str, embargo_days: int = 1) -> tuple[np.n
     train_mask = df.date.isin(days) & (df.exit_time < start)          # 엠바고 + 퍼지
     train = np.flatnonzero(train_mask.to_numpy())
     if len(train):
-        check_before_final(df.date.iloc[train])
+        check_before_final(df.date.iloc[train], limit)
     return train, test
 
 
