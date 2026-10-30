@@ -39,7 +39,8 @@ examples/
 ├── chapter05/
 ├── chapter06/
 ├── chapter07/
-└── chapter08/
+├── chapter08/
+└── chapter09/
 ```
 
 ## 장별 예제
@@ -128,3 +129,9 @@ uv run python examples/chapter06/05_diagnose.py
 | 08 | `examples/chapter08/03_calibrate.py` | 등위 회귀 보정, 기대 순수익 승인 규칙, 비용 산술 |
 | 08 | `examples/chapter08/04_integrate.py` | 이벤트 엔진에 필터를 넣은 전략 C 실행 |
 | 08 | `examples/chapter08/05_compare.py` | A 대비 C 신뢰구간, 거른 매매 대 통과한 매매, 월별 |
+
+| 장 | 예제 | 내용 |
+|---|---|---|
+| 09 | `examples/chapter09/01_run_experiments.py` | S0·A·A′·A_B·B·C·D 월별 Walk-forward 실행, 최종 테스트 포함 (약 15분) |
+| 09 | `examples/chapter09/02_compare.py` | 전략별 성과표와 사전 등록 기준에 따른 판단 |
+| 09 | `examples/chapter09/03_regimes.py` | 시장 국면·종목 특성별 성과 (S0·A 전 기간) |
