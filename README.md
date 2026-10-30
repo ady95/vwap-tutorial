@@ -26,7 +26,7 @@ src/vwap_trading/
 ├── broker/      # 키움증권 REST API 클라이언트
 ├── data/        # 분봉 수집·정제·세션·종목 선정 (02장)
 ├── indicators/  # VWAP·기울기·상태·박스 중심선 (03장)
-├── ml/          # LightGBM 학습 데이터: 피처·Triple Barrier 레이블·시간순 분할 (07장)
+├── ml/          # LightGBM 학습 데이터(07장)·필터 모델·확률 보정·승인 규칙(08장)
 ├── optimize/    # Optuna 탐색·Walk-forward·최종 테스트 봉인 (06장)
 ├── reporting/   # 차트 공통 설정
 └── strategy/    # 기본 전략 S0·A: 신호·청산·진입 허용 (04장)
@@ -38,7 +38,8 @@ examples/
 ├── chapter04/
 ├── chapter05/
 ├── chapter06/
-└── chapter07/
+├── chapter07/
+└── chapter08/
 ```
 
 ## 장별 예제
@@ -119,3 +120,11 @@ uv run python examples/chapter06/05_diagnose.py
 | 07 | `examples/chapter07/03_labels.py` | 레이블과 순이익의 관계, 같은 봉 동시 도달, 완벽한 필터의 상한 |
 | 07 | `examples/chapter07/04_split_leakage.py` | 무작위·날짜 묶음·시간순 분할의 AUC 비교 |
 | 07 | `examples/chapter07/05_validate.py` | 피처 시점 검사, 월별 건수·비율, 결측, 분포 변화 |
+
+| 장 | 예제 | 내용 |
+|---|---|---|
+| 08 | `examples/chapter08/01_train.py` | 두 레이블(① 목표가 먼저, ② 순이익>0) 학습과 피처 중요도 |
+| 08 | `examples/chapter08/02_evaluate.py` | 검증 달 AUC·Brier·점수 5분위별 순수익, 예측 저장 |
+| 08 | `examples/chapter08/03_calibrate.py` | 등위 회귀 보정, 기대 순수익 승인 규칙, 비용 산술 |
+| 08 | `examples/chapter08/04_integrate.py` | 이벤트 엔진에 필터를 넣은 전략 C 실행 |
+| 08 | `examples/chapter08/05_compare.py` | A 대비 C 신뢰구간, 거른 매매 대 통과한 매매, 월별 |

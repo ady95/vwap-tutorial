@@ -5,6 +5,8 @@
 - 피처: 신호 봉 t 가 확정된 시점까지의 값만 쓴다.
 - 레이블: t+1 시가 진입을 가정한 Triple Barrier. 장벽은 전략의 청산 규칙과 같다
   (손절 λ·ATR*, 목표 τ·ATR*, 최대 보유 h봉, 장 마감 청산). 기준선 이탈은 쓰지 않는다.
+  y     : 목표가가 먼저 (시간·장 마감 청산이면 순수익 > 0)   — 수식 명세 v0.2 12.1
+  y_net : 비용 차감 순수익 > 0                            — 08장 비교용
 """
 
 from __future__ import annotations
@@ -123,7 +125,8 @@ def triple_barrier(x: pd.DataFrame, idx: np.ndarray, p: StrategyParams, cost: Co
         net = cost.net_return(entry, px, x.index[fill].date())
         y = int(reason == "target" or (reason in ("time", "close", "eod") and net > 0))
         rows.append({"time": x.index[t], "entry_time": x.index[e], "exit_time": x.index[fill],
-                     "reason": reason, "bars": j - e + 1, "ret": px / entry - 1, "net": net, "y": y})
+                     "reason": reason, "bars": j - e + 1, "ret": px / entry - 1, "net": net, "y": y,
+                     "y_net": int(net > 0)})
     return pd.DataFrame(rows)
 
 
@@ -144,5 +147,5 @@ def build(symbols, p: StrategyParams = StrategyParams(), cost: CostModel = CostM
         parts.append(pd.concat([lab, feat], axis=1).assign(symbol=s))
     df = pd.concat(parts, ignore_index=True)
     df["date"] = df.time.dt.normalize()
-    cols = ["symbol", "date", "time", "entry_time", "exit_time", "reason", "bars", "ret", "net", "y"] + FEATURES
+    cols = ["symbol", "date", "time", "entry_time", "exit_time", "reason", "bars", "ret", "net", "y", "y_net"] + FEATURES
     return df[cols].sort_values(["time", "symbol"], kind="stable").reset_index(drop=True)

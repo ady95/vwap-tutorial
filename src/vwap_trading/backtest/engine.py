@@ -36,8 +36,9 @@ class Position:
 class SymbolDay:
     """한 종목-일의 매매 상태 기계."""
 
-    def __init__(self, symbol: str, x: pd.DataFrame, p: StrategyParams, tradable_from=None):
+    def __init__(self, symbol: str, x: pd.DataFrame, p: StrategyParams, tradable_from=None, approve=None):
         self.symbol, self.x, self.p = symbol, x, p
+        self.approve = approve                                # (종목, 신호 시각) → 승인 여부. None 이면 모두 승인
         self.sig = (raw_signal(x, p) & entry_allowed(x, p, tradable_from)).to_numpy()
         base = base_line(x, p)
         self.base = None if base is None else base.to_numpy()
@@ -87,7 +88,8 @@ class SymbolDay:
 
         # 3. 무포지션: 매수 후보 → 다음 봉 시가 주문
         if self.sig[i] and i >= self.next_ok and i < self.n - 1 and can_enter():
-            self.pending_buy = i
+            if self.approve is None or self.approve(self.symbol, self.x.index[i]):   # 08장 AI 필터
+                self.pending_buy = i
         return done
 
     def _close(self, reason: str, price: float, fill: int, last: int) -> dict:
@@ -100,10 +102,11 @@ class SymbolDay:
 
 
 def backtest(ind: dict[str, pd.DataFrame], selections: pd.DataFrame, p: StrategyParams,
-             cost: CostModel = CostModel(), max_positions: int | None = None) -> pd.DataFrame:
+             cost: CostModel = CostModel(), max_positions: int | None = None, approve=None) -> pd.DataFrame:
     """선정 종목-일 전체를 시각 순서로 흘려보내 매매 기록을 만든다.
 
     max_positions: 동시 보유(대기 매수 포함) 종목 수 한도. None 이면 제한 없음(05장 기준 실험).
+    approve: (종목, 신호 시각) → bool. 거부된 매수 후보는 주문하지 않는다(08장 LightGBM 필터).
     """
     by_day = {s: dict(tuple(x.groupby(x.index.date))) for s, x in ind.items()}
     traders = []
@@ -111,7 +114,7 @@ def backtest(ind: dict[str, pd.DataFrame], selections: pd.DataFrame, p: Strategy
         tf = pd.Timestamp(sel.tradable_from)
         day = by_day.get(sel.symbol, {}).get(tf.date())
         if day is not None:
-            traders.append(SymbolDay(sel.symbol, day, p, tf))
+            traders.append(SymbolDay(sel.symbol, day, p, tf, approve))
 
     def held():
         return sum(t.pos is not None or t.wants_entry() for t in traders)

@@ -82,3 +82,15 @@ def test_metrics_by_hand():
     # 누적: 0.02, 0.01, -0.02, -0.01, 0.01 → 고점 0.02 에서 -0.02 까지 0.04
     assert m["mdd"] == pytest.approx(0.04)
     assert max_drawdown(pd.Series([-0.01, -0.02])) == pytest.approx(0.02)   # 시작점 0 도 고점
+
+
+def test_approve_filter():
+    ind, sel = synthetic(5)
+    p = StrategyParams(strategy="S0", rho=0.0)
+    base = backtest(ind, sel, p)
+    assert len(base) > 1
+    assert backtest(ind, sel, p, approve=lambda s, t: True).equals(base)
+    assert backtest(ind, sel, p, approve=lambda s, t: False).empty
+    first = base.signal_time.iloc[0]
+    rest = backtest(ind, sel, p, approve=lambda s, t: t != first)       # 첫 신호만 거부
+    assert first not in set(rest.signal_time)
