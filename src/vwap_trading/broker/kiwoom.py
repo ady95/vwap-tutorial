@@ -57,11 +57,12 @@ class KiwoomClient:
 
     def post(self, path: str, api_id: str, body: dict, next_key: str | None = None,
              retries: int = 5) -> tuple[dict, requests.structures.CaseInsensitiveDict]:
-        headers = {"Content-Type": "application/json;charset=UTF-8", "authorization": f"Bearer {self.token()}",
-                   "api-id": api_id}
-        if next_key:
-            headers.update({"cont-yn": "Y", "next-key": next_key})
         for attempt in range(retries + 1):
+            # 같은 앱키로 다른 곳에서 토큰을 새로 받으면 기존 토큰이 무효가 되므로 매번 헤더를 새로 만든다
+            headers = {"Content-Type": "application/json;charset=UTF-8",
+                       "authorization": f"Bearer {self.token()}", "api-id": api_id}
+            if next_key:
+                headers.update({"cont-yn": "Y", "next-key": next_key})
             wait = self.min_interval - (time.monotonic() - self._last_call)
             if wait > 0:
                 time.sleep(wait)
@@ -73,6 +74,8 @@ class KiwoomClient:
             self._last_call = time.monotonic()
             if data.get("return_code") == 0:
                 return data, r.headers
+            if data.get("return_code") == 3:   # 인증 실패(토큰 무효·만료) → 토큰을 새로 받는다
+                self._token = None
             if attempt < retries:   # 호출 한도 초과·연결 끊김 등 일시 오류는 점점 길게 쉬고 재시도
                 time.sleep(2.0 * (attempt + 1))
         raise KiwoomError(f"[{api_id}] {data.get('return_code')} {data.get('return_msg')}")

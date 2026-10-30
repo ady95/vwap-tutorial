@@ -34,8 +34,14 @@ examples/
 |---|---|---|
 | 02 | `examples/chapter02/01_check_connection.py` | 키움 REST API 토큰·시세·분봉 조회 확인 |
 | 02 | `examples/chapter02/02_collect_minute_bars.py` | 연속조회로 과거 1분봉 수집 → Parquet 저장 |
+| 02 | `examples/chapter02/03_build_universe.py` | 거래대금 상위 보통주로 예제 유니버스 생성 |
+| 02 | `examples/chapter02/04_make_selections.py` | 예제 종목 선정 입력(selections.csv) 생성 |
 
 ```bash
 uv run python examples/chapter02/01_check_connection.py
 uv run python examples/chapter02/02_collect_minute_bars.py 005930 --pages 50
+uv run python examples/chapter02/03_build_universe.py --n 15
+uv run python examples/chapter02/02_collect_minute_bars.py --universe data/sample/universe_20261030.csv
+uv run python examples/chapter02/04_make_selections.py --universe data/sample/universe_20261030.csv
+uv run pytest -q
 ```
