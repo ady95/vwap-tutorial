@@ -45,3 +45,17 @@ uv run python examples/chapter02/02_collect_minute_bars.py --universe data/sampl
 uv run python examples/chapter02/04_make_selections.py --universe data/sample/universe_20261030.csv
 uv run pytest -q
 ```
+
+| 장 | 예제 | 내용 |
+|---|---|---|
+| 03 | `examples/chapter03/01_session_vwap.py` | 세션 VWAP 계산과 손 검산 |
+| 03 | `examples/chapter03/02_rolling_vs_session.py` | 세션·롤링 VWAP 반응 속도와 교차 횟수 비교 |
+| 03 | `examples/chapter03/03_state_and_box.py` | 정규화 기울기 상태 판정과 박스 중심선 통계 |
+| 03 | `examples/chapter03/04_plot_day.py` | 하루치 가격·기준선·횡보 구간 차트 |
+
+```bash
+uv run python examples/chapter03/01_session_vwap.py 005930 2026-10-29
+uv run python examples/chapter03/02_rolling_vs_session.py --universe data/sample/universe_20261030.csv
+uv run python examples/chapter03/03_state_and_box.py
+uv run python examples/chapter03/04_plot_day.py 005930 2026-10-29
+```
